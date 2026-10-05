@@ -14,3 +14,14 @@ Start with [CLAUDE.md](CLAUDE.md) for a short project summary, the stack, the ke
 - [docs/rules.md](docs/rules.md): the domain rules as testable statements.
 
 If the code and the docs disagree, the code is the source of truth; update the doc to match.
+
+## Developer's Notes
+```
+docker run --name badminton-nz-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=badminton_nz -p 5432:5432 -v badminton-nz-postgres-data:/var/lib/postgresql -d postgres:18
+
+docker stop badminton-nz-postgres
+
+docker start badminton-nz-postgres
+
+docker ps
+```
