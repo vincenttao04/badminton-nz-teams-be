@@ -15,13 +15,39 @@ Start with [CLAUDE.md](CLAUDE.md) for a short project summary, the stack, the ke
 
 If the code and the docs disagree, the code is the source of truth; update the doc to match.
 
-## Developer's Notes
-```
-docker run --name badminton-nz-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=badminton_nz -p 5432:5432 -v badminton-nz-postgres-data:/var/lib/postgresql -d postgres:18
+## Local development
 
+### Database
+
+Postgres runs in Docker. To create and start it:
+
+```bash
+    docker run --name badminton-nz-postgres \
+      -e POSTGRES_PASSWORD=DEV_PASSWORD \
+      -e POSTGRES_DB=badminton_nz \
+      -p 5432:5432 \
+      -v badminton-nz-postgres-data:/var/lib/postgresql \
+      -d postgres:18
+```
+
+Connection details:
+
+- Host: localhost
+- Port: 5432
+- Database: badminton_nz
+- User: postgres
+- Password: set when you create the container, then put the same value in .env
+
+The app reads its connection string from DATABASE_URL. See .env.example for the
+format. Data persists in the badminton-nz-postgres-data volume across container restarts and removals.
+
+### Developer's Notes
+
+```
 docker stop badminton-nz-postgres
 
 docker start badminton-nz-postgres
 
 docker ps
+
 ```
