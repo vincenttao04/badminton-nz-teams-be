@@ -8,7 +8,8 @@ from app.models.enums import ApprovalStatus, Event, ProtestStatus, enum_column
 
 
 class RankedTeamList(Base, table=True):
-    """A team's ordered list for a tournament. Each submission is a new, immutable row."""
+    """A team's ordered list for a tournament.
+    Each submission is a new, immutable row."""
 
     __table_args__ = (
         UniqueConstraint("team_id", "version", name="uq_ranked_list_version_per_team"),
