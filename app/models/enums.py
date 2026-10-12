@@ -22,6 +22,23 @@ class Role(StrEnum):
     SYSTEM_ADMINISTRATOR = "system_administrator"
 
 
+class ApprovalStatus(StrEnum):
+    """Lifecycle of a submitted list or lineup."""
+
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ProtestStatus(StrEnum):
+    """Lifecycle of a protest against a ranked team list."""
+
+    OPEN = "open"
+    UPHELD = "upheld"
+    DISMISSED = "dismissed"
+    WITHDRAWN = "withdrawn"
+
+
 def enum_column(enum_type: type[StrEnum]) -> SAEnum:
     """Store a Python StrEnum as a plain VARCHAR: no native DB enum, no value CHECK.
 
