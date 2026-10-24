@@ -4,7 +4,18 @@ Agent context for the Badminton New Zealand Team Events backend. Read this first
 
 ## What this is
 
-A web application for Badminton New Zealand that digitises and validates Team Event submissions: Ranked Team Lists before a tournament (Phase A) and Tie Lineups during it (Phase B). It replaces a manual, paper-based process in which officials check lists and lineups by hand against Player Points and the tournament rules under tight time pressure. This repository is the backend (API, domain rules, database). The frontend is a separate repository.
+A web application for Badminton New Zealand that digitises and validates Team Event submissions. It replaces a manual, paper-based process in which officials check lineups by hand against the tournament rules under tight time pressure, and it works alongside the officials' existing Tournament Software rather than replacing it.
+
+The work is delivered in two phases:
+
+- **Phase B, the first release.** The in-tournament Tie Lineup check. Teams submit a lineup into a round slot, the system checks it against that Team's Approved Team List and the rules, and an official reviews it and copies the approved lineup into Tournament Software.
+- **Phase A, a later release.** The pre-tournament Ranked Team List flow: submission, checking against Player Points, release, protests, and approval, producing the Approved Team List.
+
+This repository is the backend (API, domain rules, database). The frontend is a separate repository.
+
+## Current focus
+
+**Build Phase B.** Phase A is fully documented but deferred; do not build it unless asked. In the first release, Teams, their Access Details, and their Approved Team Lists are seeded (entered directly), standing in for the data Phase A will later produce. Everything downstream of that seed is the same whether the data was seeded or produced by Phase A, so Phase B can be built and shipped first.
 
 ## Stack
 
@@ -16,30 +27,31 @@ Full stack and the reasons behind it: [docs/technical.md](docs/technical.md#tech
 
 ## Key decisions in brief
 
+- **No matchup stored.** The system never records which Team plays which. Each lineup is checked against its own Team's Approved Team List. This is what keeps the system complementary to Tournament Software; there is no Tie entity and no Tie Sheet.
+- **Round slot as the submission window.** Submissions are gated by a slot an official opens and closes, with an official-set cut-off they can extend or reopen for specific teams, rather than fixed deadlines, because the draw is not known far ahead.
+- **Access details for team login.** Teams sign in with access details scoped to their own team and submissions; officials and associations use accounts.
+- **Phased delivery, Phase B first.** The Approved Team List (and the access details) are the seam: seeded in the first release, produced by Phase A later. Nothing in the Phase B flow changes when Phase A arrives.
 - **Shared rules engine.** One pure module powers both the live check (while building, saves nothing) and the official check (on submit), so the two can never disagree.
-- **Versioned Player Points.** Points are imported as frozen, versioned snapshots; checks read the snapshot in force, never the live source.
-- **Immutable submission history.** Each submission is a new row, never an update. The new-row-per-submission behaviour is what delivers immutability.
 - **Approved Team List is a state** of the Ranked Team List (`approval_status`), not a separate entity.
+- **Immutable submission history.** Each submission is a new row, never an update. The new-row-per-submission behaviour is what delivers immutability; the latest is in effect and earlier ones are superseded.
+- **Versioned Player Points (Phase A).** Points are imported as frozen, versioned snapshots; checks read the snapshot in force, never the live source.
 - **Transactional writes.** A state change and its audit record commit in the same database transaction.
 - **Server-side authorisation.** Role-based access plus team and association scope, enforced on the server on every request. The frontend only hides what a role cannot do; the server is the gate.
 - **Audit log records business actions, not endpoint hits**, and is append-only.
 
-Full architecture, decisions, and API design: [docs/technical.md](docs/technical.md).
+Full architecture, decisions, ERD, and API design: [docs/technical.md](docs/technical.md).
 
 ## Engineering standards
 
-- Clean, simple, straightforward code. Not over-engineered. Prefer the clear solution over the clever one.
-- Enterprise grade and production ready: reliable and robust enough to run during live tournaments.
-- Secure by default: validate input at the boundary, enforce authorisation on the server, never trust the client, keep secrets out of the source, and treat player data as protected under the NZ Privacy Act 2020. The system must not be open to abuse or misuse.
-- Fail safely: domain rule failures are returned as structured validation results, not crashes; genuine errors are handled explicitly rather than swallowed.
-- Tested where it matters: the rules engine and the submission, versioning, and authorisation paths carry tests, so later changes are safe to make.
+Clean, simple, straightforward code, not over-engineered, enterprise grade and production ready, secure by default, and tested where it matters. These are stated as concrete, actionable rules in [docs/conventions.md](docs/conventions.md). Follow that file when writing code.
 
 ## Documentation
 
-- [docs/non-technical.md](docs/non-technical.md): problem, domain, current state, and all requirements (user roles, the 39 user stories, non-functional requirements).
-- [docs/technical.md](docs/technical.md): architecture, system design, workflows, technical decisions, the ERD, API design, security, deployment, testing, and the implementation plan.
+- [docs/non-technical.md](docs/non-technical.md): the problem, domain, current state, and all requirements (user roles, the 42 user stories across 12 epics, non-functional requirements).
+- [docs/technical.md](docs/technical.md): architecture, system design, workflows, technical decisions, the ERD, API design, security, deployment, testing, and the delivery plan.
 - [docs/glossary.md](docs/glossary.md): domain term definitions.
 - [docs/rules.md](docs/rules.md): the domain rules as testable statements, next to the rules engine.
+- [docs/conventions.md](docs/conventions.md): how code is written here, with the testing and secure-coding standards.
 
 ## Source of truth
 

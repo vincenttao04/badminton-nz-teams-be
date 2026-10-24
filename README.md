@@ -1,8 +1,8 @@
 # Badminton New Zealand Team Events (Backend)
 
-Backend for a web application that digitises and validates Badminton New Zealand Team Event submissions: Ranked Team Lists before a tournament (Phase A) and Tie Lineups during it (Phase B). It replaces a manual, paper-based checking process. The frontend is a separate repository.
+The backend (API, domain rules, database) for a web application that digitises and validates Badminton New Zealand Team Event submissions. It replaces a manual, paper-based checking process and works alongside the officials' existing Tournament Software. The frontend is a separate repository.
 
-Stack: Python, FastAPI, SQLModel, PostgreSQL. See the docs below for the full picture.
+Stack: Python, FastAPI, SQLModel, PostgreSQL.
 
 ## Documentation
 
