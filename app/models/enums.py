@@ -12,13 +12,10 @@ class Event(StrEnum):
 
 
 class Role(StrEnum):
-    """A role a user can hold, always scoped by a RoleAssignment."""
+    """A role a user account can hold, scoped by a RoleAssignment."""
 
-    COACH = "coach"
-    TEAM_MANAGER = "team_manager"
     TECHNICAL_OFFICIAL = "technical_official"
     REFEREE = "referee"
-    ASSOCIATION = "association"
     SYSTEM_ADMINISTRATOR = "system_administrator"
 
 
