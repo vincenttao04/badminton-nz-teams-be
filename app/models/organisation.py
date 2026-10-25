@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint
+from sqlalchemy import DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.models.base import Base
@@ -16,18 +16,10 @@ class Association(Base, table=True):
 
 
 class Tournament(Base, table=True):
-    """A team event, holding the tie format and the key deadlines."""
-
-    __table_args__ = (
-        CheckConstraint(
-            "protest_deadline < starts_at",
-            name="protest_deadline_before_start",
-        ),
-    )
+    """A team event, holding the tie format."""
 
     name: str = Field(index=True)
     starts_at: datetime = Field(sa_type=DateTime(timezone=True))
-    protest_deadline: datetime = Field(sa_type=DateTime(timezone=True))
 
     # Tie format: matches contested per event in one tie, set per tournament.
     singles_matches: int = Field(ge=0)
@@ -38,7 +30,8 @@ class Tournament(Base, table=True):
 
 
 class Team(Base, table=True):
-    """A squad an association enters into one tournament."""
+    """A squad of players an association enters into one tournament.
+    Authenticates with its own access details."""
 
     __table_args__ = (
         UniqueConstraint(
@@ -50,6 +43,7 @@ class Team(Base, table=True):
     )
 
     name: str = Field(index=True)
+    access_details: str | None = Field(default=None)
     association_id: uuid.UUID = Field(foreign_key="association.id", index=True)
     tournament_id: uuid.UUID = Field(foreign_key="tournament.id", index=True)
 
