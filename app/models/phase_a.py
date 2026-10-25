@@ -4,7 +4,7 @@ from sqlalchemy import CheckConstraint, Column, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.models.base import Base
-from app.models.enums import ApprovalStatus, Event, ProtestStatus, enum_column
+from app.models.enums import ApprovalStatus, Event, enum_column
 
 
 class RankedTeamList(Base, table=True):
@@ -22,7 +22,6 @@ class RankedTeamList(Base, table=True):
     )
 
     positions: list["Position"] = Relationship(back_populates="ranked_team_list")
-    protests: list["Protest"] = Relationship(back_populates="ranked_team_list")
 
 
 class Position(Base, table=True):
@@ -58,16 +57,3 @@ class Position(Base, table=True):
     partner_id: uuid.UUID | None = Field(
         default=None, foreign_key="player.id", index=True
     )
-
-
-class Protest(Base, table=True):
-    """A challenge one association raises against a team's ranked team list."""
-
-    ranked_team_list_id: uuid.UUID = Field(foreign_key="rankedteamlist.id", index=True)
-    raised_by_association_id: uuid.UUID = Field(
-        foreign_key="association.id", index=True
-    )
-    status: ProtestStatus = Field(
-        sa_column=Column(enum_column(ProtestStatus), nullable=False, index=True)
-    )
-    reason: str

@@ -30,15 +30,6 @@ class ApprovalStatus(StrEnum):
     REJECTED = "rejected"
 
 
-class ProtestStatus(StrEnum):
-    """Lifecycle of a protest against a ranked team list."""
-
-    OPEN = "open"
-    UPHELD = "upheld"
-    DISMISSED = "dismissed"
-    WITHDRAWN = "withdrawn"
-
-
 def enum_column(enum_type: type[StrEnum]) -> SAEnum:
     """Store a Python StrEnum as a plain VARCHAR: no native DB enum, no value CHECK.
 
