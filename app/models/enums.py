@@ -6,9 +6,11 @@ from sqlalchemy import Enum as SAEnum
 class Event(StrEnum):
     """A badminton discipline contested within a tie."""
 
-    SINGLES = "singles"
-    DOUBLES = "doubles"
-    MIXED = "mixed"
+    MENS_SINGLES = "mens_singles"
+    WOMENS_SINGLES = "womens_singles"
+    MENS_DOUBLES = "mens_doubles"
+    WOMENS_DOUBLES = "womens_doubles"
+    MIXED_DOUBLES = "mixed_doubles"
 
 
 class Role(StrEnum):
@@ -19,12 +21,14 @@ class Role(StrEnum):
     SYSTEM_ADMINISTRATOR = "system_administrator"
 
 
-class ApprovalStatus(StrEnum):
-    """Lifecycle of a submitted list or lineup."""
+class ListStatus(StrEnum):
+    """Lifecycle of a Ranked Team List."""
 
-    SUBMITTED = "submitted"
+    ## In the first release a seeded list is entered as a draft and marked approved.
+    ## Phase A adds the submission and protest states.
+
+    DRAFT = "draft"
     APPROVED = "approved"
-    REJECTED = "rejected"
 
 
 class RoundSlotStatus(StrEnum):
@@ -32,6 +36,16 @@ class RoundSlotStatus(StrEnum):
 
     OPEN = "open"
     CLOSED = "closed"
+
+
+class LineupStatus(StrEnum):
+    """Lifecycle of a Tie Lineup submission."""
+
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    SUPERSEDED = "superseded"
+    FLAGGED = "flagged"
+    APPROVED = "approved"
 
 
 def enum_column(enum_type: type[StrEnum]) -> SAEnum:
