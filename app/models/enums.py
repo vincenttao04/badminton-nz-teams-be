@@ -27,6 +27,13 @@ class ApprovalStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class RoundSlotStatus(StrEnum):
+    """Whether a round slot is accepting submissions."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+
+
 def enum_column(enum_type: type[StrEnum]) -> SAEnum:
     """Store a Python StrEnum as a plain VARCHAR: no native DB enum, no value CHECK.
 

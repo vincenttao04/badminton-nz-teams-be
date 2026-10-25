@@ -11,7 +11,7 @@ Domain terms for the Badminton New Zealand Team Events system. This file is the 
 | Coach | Sets the ranking order, places unranked players, and builds each Tie Lineup. |
 | Player / Pair | A single player (Singles) or two players together (Doubles or Mixed). |
 | Player Points | Badminton NZ's official National Ranking points. Badminton NZ maintains them, and the most recent version is the one used. Used only in Phase A. |
-| Event | A discipline: Singles, Doubles, or Mixed Doubles. |
+| Event | A discipline. There are five: Men's Singles, Women's Singles, Men's Doubles, Women's Doubles, and Mixed Doubles. Players and pairs are ranked by Position within each Event. |
 | Position | A ranked slot within an Event, ordered by strength (for example, first Singles, second Singles). |
 | Tie | A contest between two Teams, decided across a set number of Matches in each Event. A domain term only: the system does not model the matchup (which Team plays which); that stays in Tournament Software. |
 | Match | A single contest between two Players or Pairs within a Tie. |

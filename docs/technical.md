@@ -89,7 +89,7 @@ flowchart TD
 
 ### Major Components
 
-- **Rules Engine (shared):** the pure validation core for the live and official checks. The Phase B rules check a lineup against the Approved Team List (on the list, one match per Event, relative order). The Phase A rules check a Ranked Team List against Player Points. The rules are in [rules.md](rules.md).
+- **Rules Engine (shared):** the pure validation core for the live and official checks. The Phase B rules check a lineup against the Approved Team List (on the list, one Match per Event, relative order). The Phase A rules check a Ranked Team List against Player Points. The rules are in [rules.md](rules.md).
 - **Round Slots (Phase B):** the submission windows an official opens and closes, with an official-set cut-off they can extend or reopen, and the teams allowed to submit into them.
 - **Submissions (shared):** drafts, immutable submitted versions, status, and approval, for both Tie Lineups and Ranked Team Lists.
 - **Audit (shared):** records significant business actions, append-only.
@@ -196,7 +196,11 @@ erDiagram
         int id PK
         string name
         date date
-        string tie_format
+        json tie_format
+        int max_male
+        int max_female
+        int min_male
+        int min_female
     }
     User {
         int id PK
@@ -263,6 +267,7 @@ erDiagram
     Player {
         int id PK
         string name
+        string sex
         int player_number
     }
     Protest {
@@ -289,8 +294,10 @@ erDiagram
 
 The attribute types above are indicative; the concrete types (including whether identifiers are integer or UUID) are decided in the SQLModel models and the migration.
 
-- **No matchup is stored.** There is no Tie entity: the Round Slot is the submission window, and a Tie Lineup belongs to a Round Slot and a Team. A Round Slot can be limited to specific teams through SlotTeam.
+- **No matchup is stored.** There is no Tie entity: the Round Slot is the submission window, and a Tie Lineup belongs to a Round Slot and a Team. A Round Slot can be limited to specific teams through SlotTeam, which backs the selective-gating stories (US-41, US-42) and ships with the Phase A release; the Must-Have Phase B base opens a slot to all playing teams.
 - **A list or lineup's ordered contents are rows.** ListEntry and LineupEntry hold the players and pairs at each event and position; a `partner_id` marks a Doubles or Mixed pair (null for Singles). `justification` on ListEntry records a Doubles or Mixed deviation (Phase A).
+- **An event is one of five disciplines:** Men's Singles, Women's Singles, Men's Doubles, Women's Doubles, and Mixed Doubles. `Tournament.tie_format` is structured (a count of Matches per event, in any combination) rather than a plain string, and a Tie Lineup fills one entry per (event, position) slot the format defines.
+- **Team composition is Phase A.** `Player.sex`, the optional `Tournament.min_male`, `max_male`, `min_female` and `max_female` limits, and the per-event `PlayerPoints.event` support the roster rules built in Phase A (a player is listed only in events for their sex, a Mixed pair is one male and one female, and the roster respects the tournament's male and female limits; see [rules.md](rules.md)). Phase B inherits correct entries from the Approved Team List and does not check sex.
 - **Approved Team List is a state,** represented by `approval_status` on RankedTeamList, not a separate entity. In the first release it is seeded as approved; in Phase A the approval flow sets it.
 - **`version` is an attribute** on submittable records (RankedTeamList and TieLineup). Each submission is a new row; immutability is delivered by writing a new row per submission, not by mutating this field. The latest is in effect and earlier ones are superseded.
 - **Each team has at most one coach and one manager**, so those relationships are one-to-one.
@@ -393,7 +400,7 @@ Failing check (a Phase B example):
   "findings": [
     {
       "severity": "block",
-      "location": { "event": "singles", "position": 2 },
+      "location": { "event": "mens_singles", "position": 2 },
       "rule": "Relative order within an Event must be preserved",
       "message": "Position 2 is above position 1 on the Approved Team List",
       "how_to_fix": "Swap positions 1 and 2"

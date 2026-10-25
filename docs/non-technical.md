@@ -218,8 +218,10 @@ As a Technical Official, I want to set up a tournament with its Tie Format, so t
 
 **Acceptance criteria**
 
-- Given a new tournament, when I set it up, I can define the Tie Format: how many Singles, Doubles, and Mixed matches each Tie has.
+- Given a new tournament, when I set it up, I can define the Tie Format: how many matches of each Event (Men's Singles, Women's Singles, Men's Doubles, Women's Doubles, and Mixed Doubles) each Tie has.
 - Given that the Tie Format is set, it is used when teams build Tie Lineups and when the system checks them.
+- Given the tournament setup, when I define the team rules, I can set the minimum and maximum number of male and female players a Team may list. These limits are used by the Ranked Team List check in Phase A.
+- Given I have set the Tie Format, when I set the optional minimum and maximum player counts, the system requires them to be consistent with the Tie Format so a Team can field every Match: a maximum below the number of Matches a Tie needs is rejected, and a minimum above the maximum is rejected.
 
 *Source: Rules, Selecting a Tie Lineup; Solution Outline, Phase B.*
 
@@ -410,7 +412,7 @@ As a Technical Official, I want to load the current Player Points so that all ch
 **Acceptance criteria**
 
 - Given the latest Player Points, when I load them, the system uses this version for checking.
-- For a given player, the system displays their current Singles, Doubles, and Mixed points.
+- For a given player, the system displays their current Player Points for each Event.
 - Given a newer version is loaded, the system replaces the old one and records when it was updated.
 
 *Source: Problem Context, Player Points; Constraints and Dependencies.*
@@ -427,6 +429,8 @@ As a Coach, I want to build our Ranked Team List by assigning players to Singles
 
 - Given that I assign a player to a Singles Position, the system records the player and their Singles Player Points.
 - Given I form a Doubles or Mixed pair, the system records both players and their combined points.
+- Given I place a player in an Event, the system offers only Events valid for that player's sex: men in men's Events, women in women's Events, either in Mixed Doubles.
+- Given I form a Mixed Doubles pair, the system accepts it only if it is one male and one female.
 - Given a player has no Player Points, the system lets me add them manually.
 - Given that I have not finished, the system saves the list as a draft.
 - Given that I am building the list, I can reorder players and pairs.
@@ -443,7 +447,10 @@ As a Coach, I want the system to flag any ordering that breaks the ranking rules
 
 - Given that the Singles order does not follow Singles Player Points, the system flags the Positions that break the relative order.
 - Given a Doubles or Mixed pair is placed against the combined points order, the system flags it and lets me add a justification.
+- Given a player is placed in an Event that does not match their sex, or a Mixed Doubles pair is not one male and one female, the system flags it.
 - Given that ranked and unranked players are mixed, the system keeps the relative order of ranked players and does not flag unranked placements.
+- Given a list in progress, the system prevents the roster from exceeding the tournament's maximum number of male and female players.
+- Given a list in progress, the system requires the roster to meet the tournament's minimum number of male and female players.
 
 *Source: Rules, Ordering the Ranked Team List; US-03 (Player Points).*
 
@@ -486,6 +493,7 @@ As a Referee, I want the system to check each Ranked Team List against Player Po
 
 - Given a submitted list, the system confirms the Singles order follows Singles Player Points and flags any break in relative order.
 - Given Doubles and Mixed pairs, the system flags any placed against combined points with no justification.
+- Given the roster, the system confirms every player sits in an Event valid for their sex, every Mixed Doubles pair is one male and one female, and the roster is within the tournament's male and female limits; any breach is returned as a finding.
 - Given that the check is done, I can approve the list or return it to the Team with the flagged issues.
 
 *Source: Rules, Ordering; US-03 (Player Points); Problem Statement.*

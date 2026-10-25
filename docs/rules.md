@@ -16,11 +16,13 @@ Rule IDs are stable and are never reused. Retired IDs are listed at the end.
 
 ## Tie Lineup selection (Phase B, first release)
 
+The Tie Format gives a count of Matches per Event, and a Tie Lineup fills one entry per (Event, Position) slot. Event is defined in [glossary.md](glossary.md).
+
 | ID | Rule | Check type |
 | --- | --- | --- |
 | R-10 | Every player and pair in a Tie Lineup must come from that Team's Approved Team List. | Automatic |
 | R-11 | The approved relative ranking order within each Event must be preserved in the lineup. | Automatic |
-| R-12 | A player may play at most one Match within a single Event, but may play across Singles, Doubles, and Mixed. | Automatic |
+| R-12 | A player may play at most one Match within a single Event, but may play across different Events (for example Men's Singles, Men's Doubles, and Mixed). | Automatic |
 | R-13 | The number of Matches per Event is set by the tournament's Tie Format. | Automatic |
 
 ## Round slots (Phase B, first release)
@@ -58,6 +60,17 @@ Rule IDs are stable and are never reused. Retired IDs are listed at the end.
 | R-08 | A protest is resolved either by the Team adjusting its list or by Badminton NZ adjusting it with Referee approval, and the original list, the change, and the approver are all retained. | Mixed: the resolution is judgement; retaining the history is automatic. |
 | R-09 | The protest deadline falls before the tournament starts, so Phase A must be fully resolved and approved before any Phase B check runs. | Automatic |
 | R-20 | Submitting a Ranked Team List after its deadline is blocked. | Automatic |
+
+## Team composition and eligibility
+
+The tournament's male and female player limits are optional and are set at tournament setup (Phase B), where R-31 checks them against the Tie Format. R-28 to R-30 then use `Player.sex` and those limits when the Ranked Team List is built and checked (Phase A, later release). The Phase B lineup check inherits correct entries from the Approved Team List and does not re-check these.
+
+| ID | Rule | Check type |
+| --- | --- | --- |
+| R-28 | A player may be listed only in events for their sex: men in men's events, women in women's events, either in Mixed Doubles. | Automatic |
+| R-29 | A Mixed Doubles pair must be one male and one female. | Automatic |
+| R-30 | A Team's Ranked Team List must respect the tournament's minimum and maximum male and female player counts, where the official has set them (each is optional). | Automatic |
+| R-31 | The player-count limits must be consistent with the Tie Format: a maximum below the number of Matches a Tie requires, or a minimum above the maximum, is rejected at tournament setup. | Automatic |
 
 ## Retired rule IDs
 
