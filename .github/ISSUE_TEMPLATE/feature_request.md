@@ -6,8 +6,11 @@ labels: enhancement
 
 ## Problem
 
-## Proposed solution
+## Proposed Solution
 
-## Acceptance criteria
+## Acceptance Criteria
 
-- 
+- Given <context>, when <action>, then <outcome>.
+-
+
+## Source

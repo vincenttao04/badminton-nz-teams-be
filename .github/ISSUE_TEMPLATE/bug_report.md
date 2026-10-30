@@ -4,9 +4,9 @@ about: Report something that is broken
 labels: bug
 ---
 
-## What happened
+## What Happened
 
-## Steps to reproduce
+## Steps to Reproduce
 
 1.
 2.
