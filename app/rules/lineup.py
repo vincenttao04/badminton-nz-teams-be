@@ -2,11 +2,12 @@ import uuid
 from collections import Counter
 
 from app.models.enums import Event
-from app.rules.inputs import Lineup, TieFormat
+from app.rules.inputs import ApprovedList, Lineup, TieFormat
 from app.rules.results import Finding, Location, Severity
 
 RULE_MATCH_COUNTS = "The number of matches in each event must match the tie format"
 RULE_ONE_MATCH_PER_EVENT = "A player may play at most one match within an event"
+RULE_FROM_APPROVED_LIST = "Every player and pair must come from the Approved Team List"
 
 
 def check_match_counts(lineup: Lineup, tie_format: TieFormat) -> list[Finding]:
@@ -52,4 +53,27 @@ def check_one_match_per_event(lineup: Lineup) -> list[Finding]:
                         how_to_fix=f"Use each player at most once in {event.value}",
                     )
                 )
+    return findings
+
+
+def check_from_approved_list(
+    lineup: Lineup, approved_list: ApprovedList
+) -> list[Finding]:
+    """Every player/pair in the lineup is an approved unit for its event."""
+    approved_units = {(entry.event, entry.players()) for entry in approved_list.entries}
+    findings: list[Finding] = []
+    for entry in lineup.entries:
+        if (entry.event, entry.players()) not in approved_units:
+            findings.append(
+                Finding(
+                    severity=Severity.BLOCK,
+                    location=Location(event=entry.event, position=entry.position),
+                    rule=RULE_FROM_APPROVED_LIST,
+                    message=(
+                        f"{entry.event.value} position {entry.position} "
+                        f"is not on the Approved Team List"
+                    ),
+                    how_to_fix="Pick a player or pair from the Approved Team List",
+                )
+            )
     return findings

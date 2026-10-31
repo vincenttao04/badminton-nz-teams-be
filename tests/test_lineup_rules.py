@@ -1,8 +1,12 @@
 import uuid
 
 from app.models.enums import Event
-from app.rules.inputs import Entry, Lineup, TieFormat
-from app.rules.lineup import check_match_counts, check_one_match_per_event
+from app.rules.inputs import ApprovedList, Entry, Lineup, TieFormat
+from app.rules.lineup import (
+    check_from_approved_list,
+    check_match_counts,
+    check_one_match_per_event,
+)
 from app.rules.results import Severity
 
 
@@ -120,3 +124,71 @@ def test_one_match_per_event_passes_distinct_players() -> None:
         ]
     )
     assert check_one_match_per_event(lineup) == []
+
+
+def test_from_approved_list_passes_a_listed_singles_player() -> None:
+    pid = uuid.uuid4()
+    approved = ApprovedList(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=pid)]
+    )
+    lineup = Lineup(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=pid)]
+    )
+    assert check_from_approved_list(lineup, approved) == []
+
+
+def test_from_approved_list_flags_an_unlisted_player() -> None:
+    approved = ApprovedList(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=uuid.uuid4())]
+    )
+    lineup = Lineup(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=uuid.uuid4())]
+    )
+    findings = check_from_approved_list(lineup, approved)
+    assert len(findings) == 1
+    assert findings[0].severity == Severity.BLOCK
+    assert findings[0].location.event == Event.MENS_SINGLES
+    assert findings[0].location.position == 1
+
+
+def test_from_approved_list_matches_a_pair_regardless_of_order() -> None:
+    a, b = uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[Entry(event=Event.MENS_DOUBLES, position=1, player_id=a, partner_id=b)]
+    )
+    lineup = Lineup(
+        entries=[Entry(event=Event.MENS_DOUBLES, position=1, player_id=b, partner_id=a)]
+    )
+    assert check_from_approved_list(lineup, approved) == []
+
+
+def test_from_approved_list_flags_a_repaired_pair() -> None:
+    a, b, c, d = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(event=Event.MENS_DOUBLES, position=1, player_id=a, partner_id=b),
+            Entry(event=Event.MENS_DOUBLES, position=2, player_id=c, partner_id=d),
+        ]
+    )
+    lineup = Lineup(
+        entries=[Entry(event=Event.MENS_DOUBLES, position=1, player_id=a, partner_id=c)]
+    )
+    assert len(check_from_approved_list(lineup, approved)) == 1
+
+
+def test_from_approved_list_is_event_specific() -> None:
+    pid = uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(
+                event=Event.MENS_DOUBLES,
+                position=1,
+                player_id=pid,
+                partner_id=uuid.uuid4(),
+            )
+        ]
+    )
+    lineup = Lineup(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=pid)]
+    )
+    assert len(check_from_approved_list(lineup, approved)) == 1
