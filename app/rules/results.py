@@ -1,3 +1,4 @@
+import uuid
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -13,11 +14,12 @@ class Severity(StrEnum):
 
 
 class Location(BaseModel):
-    """Where in a lineup or list a finding applies. Both parts are optional so a
-    finding can point at a whole event or at one position within it."""
+    """Where a finding applies. All parts are optional, so a finding can point at
+    an event, a position within it, or a specific player."""
 
     event: Event | None = None
     position: int | None = None
+    player_id: uuid.UUID | None = None
 
 
 class Finding(BaseModel):

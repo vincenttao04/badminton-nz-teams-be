@@ -37,4 +37,5 @@ def test_serialises_to_the_documented_shape() -> None:
     assert dumped["findings"][0]["location"] == {
         "event": "mens_singles",
         "position": 2,
+        "player_id": None,
     }

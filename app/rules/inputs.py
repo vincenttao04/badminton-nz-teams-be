@@ -13,6 +13,12 @@ class Entry(BaseModel):
     player_id: uuid.UUID
     partner_id: uuid.UUID | None = None
 
+    def players(self) -> frozenset[uuid.UUID]:
+        """The player(s) in this entry, order-insensitive for a pair."""
+        if self.partner_id is None:
+            return frozenset({self.player_id})
+        return frozenset({self.player_id, self.partner_id})
+
 
 class Lineup(BaseModel):
     """A proposed Tie Lineup to check."""

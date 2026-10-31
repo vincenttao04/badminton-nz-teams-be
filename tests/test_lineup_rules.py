@@ -2,7 +2,7 @@ import uuid
 
 from app.models.enums import Event
 from app.rules.inputs import Entry, Lineup, TieFormat
-from app.rules.lineup import check_match_counts
+from app.rules.lineup import check_match_counts, check_one_match_per_event
 from app.rules.results import Severity
 
 
@@ -57,3 +57,66 @@ def test_match_counts_report_only_the_wrong_events() -> None:
     findings = check_match_counts(lineup, fmt)
     assert len(findings) == 1
     assert findings[0].location.event == Event.WOMENS_SINGLES
+
+
+def test_one_match_per_event_allows_a_player_across_events() -> None:
+    pid = uuid.uuid4()
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=pid),
+            Entry(
+                event=Event.MENS_DOUBLES,
+                position=1,
+                player_id=pid,
+                partner_id=uuid.uuid4(),
+            ),
+        ]
+    )
+    assert check_one_match_per_event(lineup) == []
+
+
+def test_one_match_per_event_flags_a_repeat_within_an_event() -> None:
+    pid = uuid.uuid4()
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=pid),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=pid),
+        ]
+    )
+    findings = check_one_match_per_event(lineup)
+    assert len(findings) == 1
+    assert findings[0].location.event == Event.MENS_SINGLES
+    assert findings[0].location.player_id == pid
+    assert findings[0].severity == Severity.BLOCK
+
+
+def test_one_match_per_event_flags_a_repeat_inside_a_pair() -> None:
+    shared = uuid.uuid4()
+    lineup = Lineup(
+        entries=[
+            Entry(
+                event=Event.MENS_DOUBLES,
+                position=1,
+                player_id=shared,
+                partner_id=uuid.uuid4(),
+            ),
+            Entry(
+                event=Event.MENS_DOUBLES,
+                position=2,
+                player_id=shared,
+                partner_id=uuid.uuid4(),
+            ),
+        ]
+    )
+    findings = check_one_match_per_event(lineup)
+    assert any(f.location.player_id == shared for f in findings)
+
+
+def test_one_match_per_event_passes_distinct_players() -> None:
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=uuid.uuid4()),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=uuid.uuid4()),
+        ]
+    )
+    assert check_one_match_per_event(lineup) == []
