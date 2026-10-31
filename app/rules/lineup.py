@@ -8,6 +8,7 @@ from app.rules.results import Finding, Location, Severity
 RULE_MATCH_COUNTS = "The number of matches in each event must match the tie format"
 RULE_ONE_MATCH_PER_EVENT = "A player may play at most one match within an event"
 RULE_FROM_APPROVED_LIST = "Every player and pair must come from the Approved Team List"
+RULE_RELATIVE_ORDER = "The Approved Team List order within each event must be preserved"
 
 
 def check_match_counts(lineup: Lineup, tie_format: TieFormat) -> list[Finding]:
@@ -76,4 +77,47 @@ def check_from_approved_list(
                     how_to_fix="Pick a player or pair from the Approved Team List",
                 )
             )
+    return findings
+
+
+def check_relative_order(lineup: Lineup, approved_list: ApprovedList) -> list[Finding]:
+    """Within each event, the lineup keeps the relative Approved Team List order.
+    Units may only be skipped, but not swapped out of their approved order."""
+    approved_position = {
+        (entry.event, entry.players()): entry.position
+        for entry in approved_list.entries
+    }
+    findings: list[Finding] = []
+    for event in Event:
+        event_entries = sorted(
+            (entry for entry in lineup.entries if entry.event == event),
+            key=lambda entry: entry.position,
+        )
+        max_seen: int | None = None  # highest approved position placed so far
+        for entry in event_entries:
+            approved_pos = approved_position.get((entry.event, entry.players()))
+            if approved_pos is None:
+                continue  # not an approved unit
+            if max_seen is not None and approved_pos < max_seen:
+                findings.append(
+                    Finding(
+                        severity=Severity.BLOCK,
+                        location=Location(
+                            event=event,
+                            position=entry.position,
+                            player_id=entry.player_id,
+                        ),
+                        rule=RULE_RELATIVE_ORDER,
+                        message=(
+                            f"Approved Team List position {approved_pos} is placed "
+                            f"below position {max_seen} in {event.value}"
+                        ),
+                        how_to_fix=(
+                            f"Order {event.value} by the Approved Team List: "
+                            f"position {approved_pos} must come before {max_seen}"
+                        ),
+                    )
+                )
+            if max_seen is None or approved_pos > max_seen:
+                max_seen = approved_pos
     return findings

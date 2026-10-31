@@ -6,6 +6,7 @@ from app.rules.lineup import (
     check_from_approved_list,
     check_match_counts,
     check_one_match_per_event,
+    check_relative_order,
 )
 from app.rules.results import Severity
 
@@ -192,3 +193,112 @@ def test_from_approved_list_is_event_specific() -> None:
         entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=pid)]
     )
     assert len(check_from_approved_list(lineup, approved)) == 1
+
+
+def test_relative_order_passes_in_approved_order() -> None:
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    entries = [
+        Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+        Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+        Entry(event=Event.MENS_SINGLES, position=3, player_id=c),
+    ]
+    assert (
+        check_relative_order(Lineup(entries=entries), ApprovedList(entries=entries))
+        == []
+    )
+
+
+def test_relative_order_allows_skipping() -> None:
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+            Entry(event=Event.MENS_SINGLES, position=3, player_id=c),
+        ]
+    )
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=c),
+        ]
+    )
+    assert check_relative_order(lineup, approved) == []
+
+
+def test_relative_order_flags_an_inversion() -> None:
+    a, b = uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+        ]
+    )
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=b),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=a),
+        ]
+    )
+    findings = check_relative_order(lineup, approved)
+    assert len(findings) == 1
+    assert findings[0].location.event == Event.MENS_SINGLES
+    assert findings[0].location.player_id == a
+    assert findings[0].severity == Severity.BLOCK
+
+
+def test_relative_order_ignores_an_unapproved_unit() -> None:
+    a, b = uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[Entry(event=Event.MENS_SINGLES, position=1, player_id=a)]
+    )
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+        ]
+    )
+    # b is not on the approved list; reported by check_from_approved_list
+    assert check_relative_order(lineup, approved) == []
+
+
+def test_relative_order_flags_an_inverted_pair() -> None:
+    a, b, c, d = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(event=Event.MENS_DOUBLES, position=1, player_id=a, partner_id=b),
+            Entry(event=Event.MENS_DOUBLES, position=2, player_id=c, partner_id=d),
+        ]
+    )
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_DOUBLES, position=1, player_id=c, partner_id=d),
+            Entry(event=Event.MENS_DOUBLES, position=2, player_id=a, partner_id=b),
+        ]
+    )
+    findings = check_relative_order(lineup, approved)
+    assert len(findings) == 1
+    assert findings[0].location.event == Event.MENS_DOUBLES
+
+
+def test_relative_order_is_per_event() -> None:
+    a, b, c, d = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    approved = ApprovedList(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+            Entry(event=Event.WOMENS_SINGLES, position=1, player_id=c),
+            Entry(event=Event.WOMENS_SINGLES, position=2, player_id=d),
+        ]
+    )
+    lineup = Lineup(
+        entries=[
+            Entry(event=Event.MENS_SINGLES, position=1, player_id=a),
+            Entry(event=Event.MENS_SINGLES, position=2, player_id=b),
+            Entry(event=Event.WOMENS_SINGLES, position=1, player_id=d),
+            Entry(event=Event.WOMENS_SINGLES, position=2, player_id=c),
+        ]
+    )
+    findings = check_relative_order(lineup, approved)
+    assert len(findings) == 1
+    assert findings[0].location.event == Event.WOMENS_SINGLES
