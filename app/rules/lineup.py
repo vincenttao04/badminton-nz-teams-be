@@ -3,12 +3,24 @@ from collections import Counter
 
 from app.models.enums import Event
 from app.rules.inputs import ApprovedList, Lineup, TieFormat
-from app.rules.results import Finding, Location, Severity
+from app.rules.results import Finding, Location, Severity, ValidationResult
 
 RULE_MATCH_COUNTS = "The number of matches in each event must match the tie format"
 RULE_ONE_MATCH_PER_EVENT = "A player may play at most one match within an event"
 RULE_FROM_APPROVED_LIST = "Every player and pair must come from the Approved Team List"
 RULE_RELATIVE_ORDER = "The Approved Team List order within each event must be preserved"
+
+
+def check_lineup(
+    lineup: Lineup, approved_list: ApprovedList, tie_format: TieFormat
+) -> ValidationResult:
+    """Run every Phase B lineup rule and combine the findings into one result."""
+    findings: list[Finding] = []
+    findings.extend(check_match_counts(lineup, tie_format))
+    findings.extend(check_one_match_per_event(lineup))
+    findings.extend(check_from_approved_list(lineup, approved_list))
+    findings.extend(check_relative_order(lineup, approved_list))
+    return ValidationResult.from_findings(findings)
 
 
 def check_match_counts(lineup: Lineup, tie_format: TieFormat) -> list[Finding]:
