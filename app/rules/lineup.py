@@ -24,7 +24,7 @@ def check_lineup(
 
 
 def check_match_counts(lineup: Lineup, tie_format: TieFormat) -> list[Finding]:
-    """Each event has exactly the number of matches the tie format sets."""
+    """R-13: Each event has exactly the number of matches the tie format sets."""
     counts = Counter(entry.event for entry in lineup.entries)
     findings: list[Finding] = []
     for event in Event:
@@ -47,7 +47,7 @@ def check_match_counts(lineup: Lineup, tie_format: TieFormat) -> list[Finding]:
 
 
 def check_one_match_per_event(lineup: Lineup) -> list[Finding]:
-    """A player appears at most once within a single event, but may play
+    """R-12: A player appears at most once within a single event, but may play
     across different events."""
     findings: list[Finding] = []
     for event in Event:
@@ -72,7 +72,7 @@ def check_one_match_per_event(lineup: Lineup) -> list[Finding]:
 def check_from_approved_list(
     lineup: Lineup, approved_list: ApprovedList
 ) -> list[Finding]:
-    """Every player/pair in the lineup is an approved unit for its event."""
+    """R-10: Every player/pair in the lineup is an approved unit for its event."""
     approved_units = {(entry.event, entry.players()) for entry in approved_list.entries}
     findings: list[Finding] = []
     for entry in lineup.entries:
@@ -93,7 +93,7 @@ def check_from_approved_list(
 
 
 def check_relative_order(lineup: Lineup, approved_list: ApprovedList) -> list[Finding]:
-    """Within each event, the lineup keeps the relative Approved Team List order.
+    """R-11: Within each event, the lineup keeps the relative Approved Team List order.
     Units may only be skipped, but not swapped out of their approved order."""
     approved_position = {
         (entry.event, entry.players()): entry.position
