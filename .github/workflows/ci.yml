@@ -8,6 +8,24 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: badminton_nz
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/badminton_nz
+
     steps:
       - name: Check the code
         uses: actions/checkout@v5
@@ -19,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Create the test database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE badminton_nz_test;"
 
       - name: Check formatting
         run: uv run ruff format --check .
