@@ -11,6 +11,8 @@ class User(Base, table=True):
     """A person who signs in and acts in the system.
     Permissions come from RoleAssignment."""
 
+    __tablename__ = "app_user"  # pyright: ignore[reportAssignmentType]
+
     email: str = Field(unique=True, index=True)
     full_name: str
     hashed_password: str
@@ -38,7 +40,7 @@ class RoleAssignment(Base, table=True):
         ),
     )
 
-    user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="app_user.id", index=True)
     role: Role = Field(sa_column=Column(enum_column(Role), nullable=False, index=True))
     tournament_id: uuid.UUID | None = Field(
         default=None, foreign_key="tournament.id", index=True
