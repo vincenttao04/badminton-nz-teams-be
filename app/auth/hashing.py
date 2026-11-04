@@ -6,6 +6,7 @@ _hasher = PasswordHasher()
 
 def hash_secret(secret: str) -> str:
     """Hash a password or team access detail with Argon2id."""
+    # Argon2id, slow, salted, used with verify.
     return _hasher.hash(secret)
 
 

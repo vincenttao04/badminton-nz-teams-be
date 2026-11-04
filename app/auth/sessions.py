@@ -13,6 +13,7 @@ _TOKEN_BYTES = 32
 
 def _hash_token(token: str) -> str:
     """One-way hash of a session token, for storage and lookup."""
+    # SHA-256, fast, deterministic, used for look-up.
     return hashlib.sha256(token.encode()).hexdigest()
 
 
