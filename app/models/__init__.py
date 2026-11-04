@@ -1,4 +1,4 @@
-from app.models.access import RoleAssignment, User
+from app.models.access import AuthSession, RoleAssignment, User
 from app.models.base import Base
 from app.models.enums import (
     Event,
@@ -16,6 +16,7 @@ from app.models.slots import RoundSlot
 
 __all__ = [
     "Association",
+    "AuthSession",
     "Base",
     "Event",
     "LineupEntry",
