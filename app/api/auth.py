@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -8,7 +9,7 @@ from app.auth.hashing import hash_secret, verify_secret
 from app.auth.sessions import create_session, revoke_session
 from app.config import get_settings
 from app.db import get_session
-from app.models import User
+from app.models import Team, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -22,6 +23,11 @@ DbSession = Annotated[Session, Depends(get_session)]
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class TeamLoginRequest(BaseModel):
+    team_id: uuid.UUID
+    access_code: str
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -55,3 +61,15 @@ def logout(request: Request, response: Response, db: DbSession) -> None:
     if token:
         revoke_session(db, token)
     response.delete_cookie(cookie_name)
+
+
+@router.post("/team-login", status_code=status.HTTP_204_NO_CONTENT)
+def team_login(body: TeamLoginRequest, response: Response, db: DbSession) -> None:
+    team = db.get(Team, body.team_id)
+    if team is None or team.access_details is None:
+        verify_secret(body.access_code, _DUMMY_HASH)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_secret(body.access_code, team.access_details):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    _, token = create_session(db, team_id=team.id)
+    _set_session_cookie(response, token)
