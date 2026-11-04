@@ -1,11 +1,14 @@
 from collections.abc import Generator
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlmodel import Session, SQLModel
 
 import app.models  # noqa: F401  # registers every table on SQLModel.metadata
 from app.config import get_settings
+from app.db import get_session
+from app.main import create_app
 
 TEST_DB_NAME = "badminton_nz_test"
 
@@ -37,3 +40,12 @@ def db_session(engine: Engine) -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
     _truncate_all(engine)
+
+
+@pytest.fixture
+def client(db_session: Session) -> Generator[TestClient, None, None]:
+    app = create_app()
+    app.dependency_overrides[get_session] = lambda: db_session
+    with TestClient(app, base_url="https://testserver") as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
