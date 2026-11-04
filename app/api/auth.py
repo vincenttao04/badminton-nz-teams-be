@@ -1,15 +1,16 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app.api.deps import CurrentSession, roles_of
 from app.auth.hashing import hash_secret, verify_secret
 from app.auth.sessions import create_session, revoke_session
 from app.config import get_settings
 from app.db import get_session
-from app.models import Team, User
+from app.models import Role, Team, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -28,6 +29,13 @@ class LoginRequest(BaseModel):
 class TeamLoginRequest(BaseModel):
     team_id: uuid.UUID
     access_code: str
+
+
+class MeResponse(BaseModel):
+    kind: Literal["user", "team"]
+    id: uuid.UUID
+    name: str
+    roles: list[Role]
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -73,3 +81,23 @@ def team_login(body: TeamLoginRequest, response: Response, db: DbSession) -> Non
         raise HTTPException(status_code=401, detail="Invalid credentials")
     _, token = create_session(db, team_id=team.id)
     _set_session_cookie(response, token)
+
+
+@router.get("/me")
+def me(session: CurrentSession, db: DbSession) -> MeResponse:
+    if session.user_id is not None:
+        user = db.get(User, session.user_id)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return MeResponse(
+            kind="user",
+            id=session.user_id,
+            name=user.full_name,
+            roles=roles_of(db, user),
+        )
+    if session.team_id is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    team = db.get(Team, session.team_id)
+    if team is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return MeResponse(kind="team", id=session.team_id, name=team.name, roles=[])
