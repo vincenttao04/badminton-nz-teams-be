@@ -7,12 +7,11 @@ RULE_ROSTER_FITS_TIE_FORMAT = "Roster limits must be consistent with the tie for
 
 
 def required_players_by_sex(tie_format: TieFormat) -> tuple[int, int]:
-    """The fewest distinct male and female players needed to field the tie format.
+    """Fewest distinct male and female players needed to field the tie format.
 
-    A player plays at most one match within an event but may play across events
-    (R-12), so one player can cover a slot in every event at once. The floor per
-    sex is therefore the largest single-event demand, not the sum across events:
-    doubles needs two players per match, mixed needs one of each sex per match.
+    R-12: A player plays at most one match per event but may play across events,
+    so the floor is the largest single-event demand, not the sum; doubles needs
+    two per match.
     """
     required_male = max(
         tie_format.count_for(Event.MENS_SINGLES),
@@ -35,10 +34,10 @@ def validate_tournament_config(
     min_female: int | None,
     max_female: int | None,
 ) -> ValidationResult:
-    """Check a tournament's tie format and optional roster limits (R-31).
+    """R-31: Validate a tie format and its optional roster limits.
 
-    Blocks an empty tie format, a roster maximum below the players the tie format
-    needs, or a minimum above the maximum. A limit left unset is not checked.
+    Blocks an empty tie format, a maximum below the players needed, or a minimum
+    above the maximum. An unset limit is skipped.
     """
     required_male, required_female = required_players_by_sex(tie_format)
     findings: list[Finding] = []
