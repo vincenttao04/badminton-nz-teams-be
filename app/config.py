@@ -12,8 +12,12 @@ class Settings(BaseSettings):
     # Session and cookie settings.
     session_cookie_name: str = "session"
     session_lifetime_hours: int = 12
-    session_cookie_secure: bool = True
+    session_cookie_secure: bool = False
     session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    # Access code the seed assigns to the demo team. Override per environment;
+    # the default is for local seeding only, not a real credential.
+    seed_team_access_code: str = "badminton-demo-access"
 
 
 @lru_cache

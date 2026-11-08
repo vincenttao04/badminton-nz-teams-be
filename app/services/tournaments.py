@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlmodel import Session, col, select
@@ -55,6 +56,33 @@ def create_tournament(db: Session, tournament: Tournament) -> Tournament:
     db.commit()
     db.refresh(tournament)
     return tournament
+
+
+def get_or_create_tournament(
+    db: Session,
+    *,
+    name: str,
+    starts_at: datetime,
+    mens_singles_matches: int,
+    womens_singles_matches: int,
+    mens_doubles_matches: int,
+    womens_doubles_matches: int,
+    mixed_doubles_matches: int,
+) -> Tournament:
+    """Find a tournament by name, or create it (used by the seed)."""
+    existing = db.exec(select(Tournament).where(Tournament.name == name)).first()
+    if existing is not None:
+        return existing
+    tournament = Tournament(
+        name=name,
+        starts_at=starts_at,
+        mens_singles_matches=mens_singles_matches,
+        womens_singles_matches=womens_singles_matches,
+        mens_doubles_matches=mens_doubles_matches,
+        womens_doubles_matches=womens_doubles_matches,
+        mixed_doubles_matches=mixed_doubles_matches,
+    )
+    return create_tournament(db, tournament)
 
 
 def list_tournaments(db: Session) -> list[Tournament]:
