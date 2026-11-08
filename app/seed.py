@@ -70,11 +70,13 @@ def seed(db: Session) -> Team:
 
 
 def main() -> None:
+    settings = get_settings()
     with Session(get_engine()) as db:
         team = seed(db)
-    settings = get_settings()
+        team_name = team.name
+        team_id = team.id
     print("Seed complete.")
-    print(f"  Team:        {team.name} ({team.id})")
+    print(f"  Team:        {team_name} ({team_id})")
     print(f"  Access code: {settings.seed_team_access_code}")
     print("  Log in via POST /v1/auth/team-login with that team_id and access_code.")
 
