@@ -24,7 +24,6 @@ _require_session = Depends(get_current_session)
 class TournamentCreate(BaseModel):
     name: str = Field(min_length=1)
     starts_at: datetime
-    ends_at: datetime
     mens_singles_matches: int = Field(ge=0)
     womens_singles_matches: int = Field(ge=0)
     mens_doubles_matches: int = Field(ge=0)
@@ -39,7 +38,6 @@ class TournamentCreate(BaseModel):
 class TournamentUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1)
     starts_at: datetime | None = None
-    ends_at: datetime | None = None
     mens_singles_matches: int | None = Field(default=None, ge=0)
     womens_singles_matches: int | None = Field(default=None, ge=0)
     mens_doubles_matches: int | None = Field(default=None, ge=0)
@@ -57,7 +55,6 @@ class TournamentResponse(BaseModel):
     id: uuid.UUID
     name: str
     starts_at: datetime
-    ends_at: datetime
     mens_singles_matches: int
     womens_singles_matches: int
     mens_doubles_matches: int
@@ -73,7 +70,7 @@ class TournamentResponse(BaseModel):
 
 def _config_error(exc: TournamentConfigError) -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail=exc.result.model_dump(mode="json"),
     )
 
