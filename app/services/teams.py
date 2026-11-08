@@ -1,7 +1,7 @@
 import secrets
 import uuid
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.auth.hashing import hash_secret
 from app.models import Team
@@ -33,3 +33,27 @@ def issue_access_details(db: Session, team_id: uuid.UUID) -> str:
     access_code = secrets.token_urlsafe(_ACCESS_CODE_BYTES)
     set_access_details(db, team, access_code)
     return access_code
+
+
+def get_or_create_team(
+    db: Session,
+    *,
+    name: str,
+    association_id: uuid.UUID,
+    tournament_id: uuid.UUID,
+) -> Team:
+    """Find a team by its unique (tournament, association, name), or create it."""
+    existing = db.exec(
+        select(Team).where(
+            Team.tournament_id == tournament_id,
+            Team.association_id == association_id,
+            Team.name == name,
+        )
+    ).one_or_none()
+    if existing is not None:
+        return existing
+    team = Team(name=name, association_id=association_id, tournament_id=tournament_id)
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+    return team

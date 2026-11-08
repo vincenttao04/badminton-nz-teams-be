@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = True
     session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
+    # Access code the seed assigns to the demo team. Override per environment;
+    # the default is for local seeding only, not a real credential.
+    seed_team_access_code: str = "badminton-demo-access"
+
 
 @lru_cache
 def get_settings() -> Settings:
