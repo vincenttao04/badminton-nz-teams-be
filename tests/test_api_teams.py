@@ -50,6 +50,39 @@ def _create_team(db_session: Session) -> Team:
     return team
 
 
+def _entries() -> list[dict[str, object]]:
+    return [
+        {
+            "event": "mens_singles",
+            "position": 1,
+            "player": {"member_id": "M1", "full_name": "M One"},
+        },
+        {
+            "event": "womens_singles",
+            "position": 1,
+            "player": {"member_id": "F1", "full_name": "F One"},
+        },
+        {
+            "event": "mens_doubles",
+            "position": 1,
+            "player": {"member_id": "M2", "full_name": "M Two"},
+            "partner": {"member_id": "M3", "full_name": "M Three"},
+        },
+        {
+            "event": "womens_doubles",
+            "position": 1,
+            "player": {"member_id": "F2", "full_name": "F Two"},
+            "partner": {"member_id": "F3", "full_name": "F Three"},
+        },
+        {
+            "event": "mixed_doubles",
+            "position": 1,
+            "player": {"member_id": "M1", "full_name": "M One"},
+            "partner": {"member_id": "F1", "full_name": "F One"},
+        },
+    ]
+
+
 def test_issue_access_requires_the_official_role(
     client: TestClient, db_session: Session
 ) -> None:
@@ -80,3 +113,73 @@ def test_issue_access_for_unknown_team_is_404(
     _login_official(client, db_session)
     response = client.post(f"/v1/teams/{uuid.uuid4()}/access-details")
     assert response.status_code == 404
+
+
+def test_record_approved_list_creates_an_approved_version(
+    client: TestClient, db_session: Session
+) -> None:
+    team = _create_team(db_session)
+    _login_official(client, db_session)
+    response = client.post(
+        f"/v1/teams/{team.id}/approved-list", json={"entries": _entries()}
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["version"] == 1
+    assert body["approval_status"] == "approved"
+    assert body["entry_count"] == 5
+
+
+def test_second_approved_list_increments_the_version(
+    client: TestClient, db_session: Session
+) -> None:
+    team = _create_team(db_session)
+    _login_official(client, db_session)
+    first = client.post(
+        f"/v1/teams/{team.id}/approved-list", json={"entries": _entries()}
+    )
+    second = client.post(
+        f"/v1/teams/{team.id}/approved-list", json={"entries": _entries()}
+    )
+    assert first.json()["version"] == 1
+    assert second.json()["version"] == 2
+
+
+def test_approved_list_rejects_a_singles_entry_with_a_partner(
+    client: TestClient, db_session: Session
+) -> None:
+    team = _create_team(db_session)
+    _login_official(client, db_session)
+    bad = [
+        {
+            "event": "mens_singles",
+            "position": 1,
+            "player": {"member_id": "M1", "full_name": "M One"},
+            "partner": {"member_id": "M2", "full_name": "M Two"},
+        }
+    ]
+    response = client.post(f"/v1/teams/{team.id}/approved-list", json={"entries": bad})
+    assert response.status_code == 422
+
+
+def test_approved_list_rejects_duplicate_slots(
+    client: TestClient, db_session: Session
+) -> None:
+    team = _create_team(db_session)
+    _login_official(client, db_session)
+    duplicate = [
+        {
+            "event": "mens_singles",
+            "position": 1,
+            "player": {"member_id": "M1", "full_name": "M One"},
+        },
+        {
+            "event": "mens_singles",
+            "position": 1,
+            "player": {"member_id": "M2", "full_name": "M Two"},
+        },
+    ]
+    response = client.post(
+        f"/v1/teams/{team.id}/approved-list", json={"entries": duplicate}
+    )
+    assert response.status_code == 422
