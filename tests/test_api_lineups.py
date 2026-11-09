@@ -28,6 +28,7 @@ def _make_team(db_session: Session, *, singles: int = 2, doubles: int = 1) -> Te
     tournament = Tournament(
         name="Nationals",
         starts_at=datetime.now(UTC),
+        ends_at=datetime(2030, 1, 1, tzinfo=UTC),
         mens_singles_matches=singles,
         womens_singles_matches=0,
         mens_doubles_matches=doubles,

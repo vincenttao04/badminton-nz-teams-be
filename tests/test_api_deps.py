@@ -29,6 +29,7 @@ def _team(db_session: Session, code: str = "code") -> Team:
     tournament = Tournament(
         name="Nationals",
         starts_at=datetime.now(UTC),
+        ends_at=datetime(2030, 1, 1, tzinfo=UTC),
         mens_singles_matches=1,
         womens_singles_matches=1,
         mens_doubles_matches=0,

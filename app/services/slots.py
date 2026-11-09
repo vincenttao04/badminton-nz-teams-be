@@ -135,3 +135,12 @@ def update_slot(
     db.commit()
     db.refresh(slot)
     return slot
+
+
+def team_is_admitted(db: Session, slot_id: uuid.UUID, team_id: uuid.UUID) -> bool:
+    """Whether a team may submit to a slot. A slot with no admitted-team rows
+    admits every team; otherwise only the teams on its allowlist."""
+    rows = db.exec(select(SlotTeam).where(SlotTeam.round_slot_id == slot_id)).all()
+    if not rows:
+        return True
+    return any(row.team_id == team_id for row in rows)

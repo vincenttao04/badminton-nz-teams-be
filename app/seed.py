@@ -48,6 +48,7 @@ def seed(db: Session) -> Team:
         db,
         name="Demo Open",
         starts_at=datetime(2026, 12, 1, tzinfo=UTC),
+        ends_at=datetime(2026, 12, 2, tzinfo=UTC),
         mens_singles_matches=1,
         womens_singles_matches=1,
         mens_doubles_matches=1,

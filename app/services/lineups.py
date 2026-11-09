@@ -3,15 +3,44 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, col, select
 
-from app.models import ListEntry, ListStatus, Player, RankedTeamList, Team
+from app.models import (
+    LineupEntry,
+    LineupStatus,
+    ListEntry,
+    ListStatus,
+    Player,
+    RankedTeamList,
+    RoundSlotStatus,
+    Team,
+    TieLineup,
+)
 from app.models.enums import Event
 from app.rules import ApprovedList, Entry, Lineup, TieFormat, check_lineup
 from app.rules.results import ValidationResult
+from app.services.slots import RoundSlotNotFoundError, get_slot, team_is_admitted
 from app.services.tournaments import get_tournament, tie_format_of
+
+_SINGLES = {Event.MENS_SINGLES, Event.WOMENS_SINGLES}
 
 
 class NoApprovedListError(Exception):
     """Raised when a team has no approved Ranked Team List to check against."""
+
+
+class SlotClosedError(Exception):
+    """Raised when a lineup is submitted into a slot that is not open."""
+
+
+class TeamNotAdmittedError(Exception):
+    """Raised when a team is not admitted to the slot it submits into."""
+
+
+class LineupShapeError(Exception):
+    """Raised when an entry has the wrong shape for its event (pairing)."""
+
+
+class UnknownPlayerError(Exception):
+    """Raised when a lineup entry references a player that does not exist."""
 
 
 @dataclass(frozen=True)
@@ -98,3 +127,87 @@ def check_team_lineup(db: Session, team: Team, lineup: Lineup) -> ValidationResu
     approved = approved_list_input(db, team.id)
     tie_format = tie_format_for_team(db, team)
     return check_lineup(lineup, approved, tie_format)
+
+
+def _enforce_shape(lineup: Lineup) -> None:
+    """Each doubles/mixed entry needs a pair; each singles entry needs none."""
+    for entry in lineup.entries:
+        needs_partner = entry.event not in _SINGLES
+        if needs_partner and entry.partner_id is None:
+            raise LineupShapeError(f"{entry.event.value} needs a pair.")
+        if not needs_partner and entry.partner_id is not None:
+            raise LineupShapeError(
+                f"{entry.event.value} is a singles match and takes one player."
+            )
+
+
+def _enforce_known_players(db: Session, lineup: Lineup) -> None:
+    """Every referenced player and partner must exist."""
+    for entry in lineup.entries:
+        ids = [entry.player_id]
+        if entry.partner_id is not None:
+            ids.append(entry.partner_id)
+        for player_id in ids:
+            if db.get(Player, player_id) is None:
+                raise UnknownPlayerError("A lineup entry references an unknown player.")
+
+
+def submit_lineup(
+    db: Session, team: Team, round_slot_id: uuid.UUID, lineup: Lineup
+) -> tuple[TieLineup, ValidationResult]:
+    """Record a team's lineup submission into an open slot.
+
+    Each submission is a new immutable version that supersedes the team's
+    previous one in that slot. The lineup is recorded whatever the check says:
+    a passing lineup is ``submitted``, a blocking one is ``flagged`` for the
+    official to review. Rejects a closed slot, a team not admitted, a lineup of
+    the wrong shape, or a team with no approved list.
+    """
+    assert team.id is not None
+    slot = get_slot(db, round_slot_id)
+    if slot.tournament_id != team.tournament_id:
+        raise RoundSlotNotFoundError  # not this team's slot to see
+    if slot.status is not RoundSlotStatus.OPEN:
+        raise SlotClosedError
+    if not team_is_admitted(db, round_slot_id, team.id):
+        raise TeamNotAdmittedError
+    _enforce_shape(lineup)
+    _enforce_known_players(db, lineup)
+
+    result = check_team_lineup(db, team, lineup)
+    status = LineupStatus.SUBMITTED if result.ok else LineupStatus.FLAGGED
+
+    existing = db.exec(
+        select(TieLineup).where(
+            TieLineup.round_slot_id == round_slot_id,
+            TieLineup.team_id == team.id,
+        )
+    ).all()
+    next_version = max((row.version for row in existing), default=0) + 1
+    for row in existing:
+        if row.status is not LineupStatus.SUPERSEDED:
+            row.status = LineupStatus.SUPERSEDED
+            db.add(row)
+
+    submission = TieLineup(
+        round_slot_id=round_slot_id,
+        team_id=team.id,
+        version=next_version,
+        status=status,
+    )
+    db.add(submission)
+    db.flush()
+    assert submission.id is not None
+    for entry in lineup.entries:
+        db.add(
+            LineupEntry(
+                tie_lineup_id=submission.id,
+                event=entry.event,
+                position=entry.position,
+                player_id=entry.player_id,
+                partner_id=entry.partner_id,
+            )
+        )
+    db.commit()
+    db.refresh(submission)
+    return submission, result

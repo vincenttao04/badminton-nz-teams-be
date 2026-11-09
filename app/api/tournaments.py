@@ -8,6 +8,7 @@ from app.api.deps import DbSession, get_current_session, require_roles
 from app.models import Role, Tournament
 from app.services.tournaments import (
     TournamentConfigError,
+    TournamentDatesError,
     TournamentNotFoundError,
     create_tournament,
     get_tournament,
@@ -24,6 +25,7 @@ _require_session = Depends(get_current_session)
 class TournamentCreate(BaseModel):
     name: str = Field(min_length=1)
     starts_at: datetime
+    ends_at: datetime
     mens_singles_matches: int = Field(ge=0)
     womens_singles_matches: int = Field(ge=0)
     mens_doubles_matches: int = Field(ge=0)
@@ -38,6 +40,7 @@ class TournamentCreate(BaseModel):
 class TournamentUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1)
     starts_at: datetime | None = None
+    ends_at: datetime | None = None
     mens_singles_matches: int | None = Field(default=None, ge=0)
     womens_singles_matches: int | None = Field(default=None, ge=0)
     mens_doubles_matches: int | None = Field(default=None, ge=0)
@@ -55,6 +58,7 @@ class TournamentResponse(BaseModel):
     id: uuid.UUID
     name: str
     starts_at: datetime
+    ends_at: datetime
     mens_singles_matches: int
     womens_singles_matches: int
     mens_doubles_matches: int
@@ -81,6 +85,12 @@ def _not_found() -> HTTPException:
     )
 
 
+def _dates_error(exc: TournamentDatesError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+    )
+
+
 @router.get("", dependencies=[_require_session])
 def list_all(db: DbSession) -> list[TournamentResponse]:
     return [
@@ -96,6 +106,8 @@ def create(body: TournamentCreate, db: DbSession) -> TournamentResponse:
         created = create_tournament(db, tournament)
     except TournamentConfigError as exc:
         raise _config_error(exc) from exc
+    except TournamentDatesError as exc:
+        raise _dates_error(exc) from exc
     return TournamentResponse.model_validate(created)
 
 
@@ -119,4 +131,6 @@ def update(
         raise _not_found() from exc
     except TournamentConfigError as exc:
         raise _config_error(exc) from exc
+    except TournamentDatesError as exc:
+        raise _dates_error(exc) from exc
     return TournamentResponse.model_validate(updated)

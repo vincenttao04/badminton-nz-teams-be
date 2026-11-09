@@ -25,6 +25,10 @@ class TournamentConfigError(Exception):
         self.result = result
 
 
+class TournamentDatesError(Exception):
+    """Raised when a tournament's end does not fall after its start."""
+
+
 def tie_format_of(tournament: Tournament) -> TieFormat:
     """The tie format (matches per event) for a tournament."""
     return TieFormat(
@@ -50,9 +54,15 @@ def _enforce_config(tournament: Tournament) -> None:
         raise TournamentConfigError(result)
 
 
+def _enforce_dates(tournament: Tournament) -> None:
+    if tournament.ends_at <= tournament.starts_at:
+        raise TournamentDatesError("A tournament's end must fall after its start.")
+
+
 def create_tournament(db: Session, tournament: Tournament) -> Tournament:
     """Validate and persist a new tournament."""
     _enforce_config(tournament)
+    _enforce_dates(tournament)
     db.add(tournament)
     db.commit()
     db.refresh(tournament)
@@ -64,6 +74,7 @@ def get_or_create_tournament(
     *,
     name: str,
     starts_at: datetime,
+    ends_at: datetime,
     mens_singles_matches: int,
     womens_singles_matches: int,
     mens_doubles_matches: int,
@@ -77,6 +88,7 @@ def get_or_create_tournament(
     tournament = Tournament(
         name=name,
         starts_at=starts_at,
+        ends_at=ends_at,
         mens_singles_matches=mens_singles_matches,
         womens_singles_matches=womens_singles_matches,
         mens_doubles_matches=mens_doubles_matches,
@@ -108,6 +120,7 @@ def update_tournament(
     for field, value in changes.items():
         setattr(tournament, field, value)
     _enforce_config(tournament)
+    _enforce_dates(tournament)
     db.add(tournament)
     db.commit()
     db.refresh(tournament)
