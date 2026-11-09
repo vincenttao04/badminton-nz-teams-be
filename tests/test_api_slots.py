@@ -191,7 +191,9 @@ def test_extend_a_cut_off(client: TestClient, db_session: Session) -> None:
     later = (_CLOSES_AT + timedelta(hours=1)).isoformat()
     response = client.patch(f"/v1/slots/{slot['id']}", json={"closes_at": later})
     assert response.status_code == 200
-    assert response.json()["closes_at"] == later
+    assert datetime.fromisoformat(
+        response.json()["closes_at"]
+    ) == datetime.fromisoformat(later)
 
 
 def test_reopen_and_extend_in_one_step(client: TestClient, db_session: Session) -> None:
@@ -211,7 +213,7 @@ def test_reopen_and_extend_in_one_step(client: TestClient, db_session: Session) 
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "open"
-    assert body["closes_at"] == later
+    assert datetime.fromisoformat(body["closes_at"]) == datetime.fromisoformat(later)
 
 
 def test_extend_rejects_a_cut_off_before_it_opens(
