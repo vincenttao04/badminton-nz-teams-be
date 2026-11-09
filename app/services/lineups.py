@@ -39,6 +39,10 @@ class LineupShapeError(Exception):
     """Raised when an entry has the wrong shape for its event (pairing)."""
 
 
+class UnknownPlayerError(Exception):
+    """Raised when a lineup entry references a player that does not exist."""
+
+
 @dataclass(frozen=True)
 class ApprovedUnit:
     """One approved (event, position) slot with its player details resolved."""
@@ -137,6 +141,17 @@ def _enforce_shape(lineup: Lineup) -> None:
             )
 
 
+def _enforce_known_players(db: Session, lineup: Lineup) -> None:
+    """Every referenced player and partner must exist."""
+    for entry in lineup.entries:
+        ids = [entry.player_id]
+        if entry.partner_id is not None:
+            ids.append(entry.partner_id)
+        for player_id in ids:
+            if db.get(Player, player_id) is None:
+                raise UnknownPlayerError("A lineup entry references an unknown player.")
+
+
 def submit_lineup(
     db: Session, team: Team, round_slot_id: uuid.UUID, lineup: Lineup
 ) -> tuple[TieLineup, ValidationResult]:
@@ -157,6 +172,7 @@ def submit_lineup(
     if not team_is_admitted(db, round_slot_id, team.id):
         raise TeamNotAdmittedError
     _enforce_shape(lineup)
+    _enforce_known_players(db, lineup)
 
     result = check_team_lineup(db, team, lineup)
     status = LineupStatus.SUBMITTED if result.ok else LineupStatus.FLAGGED

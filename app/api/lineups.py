@@ -13,6 +13,7 @@ from app.services.lineups import (
     NoApprovedListError,
     SlotClosedError,
     TeamNotAdmittedError,
+    UnknownPlayerError,
     check_team_lineup,
     list_approved_units,
     submit_lineup,
@@ -147,7 +148,7 @@ def submit_lineup_endpoint(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This team is not admitted to the slot.",
         ) from exc
-    except LineupShapeError as exc:
+    except (LineupShapeError, UnknownPlayerError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc

@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.auth.hashing import hash_secret
 from app.models import (
     Association,
+    Player,
     RoundSlot,
     RoundSlotStatus,
     SlotTeam,
@@ -175,14 +176,32 @@ def test_submit_flags_a_lineup_that_fails_the_check(
     assert team.id is not None
     _seed_list(db_session, team.id)
     slot_id = _open_slot(db_session, team.tournament_id)
+    stranger = Player(member_id="X9", full_name="Stranger")
+    db_session.add(stranger)
+    db_session.commit()
+    assert stranger.id is not None
     _login_team(client, team)
     entries = _valid_entries(client)
-    entries[1]["player_id"] = str(uuid.uuid4())  # off the approved list
+    entries[1]["player_id"] = str(stranger.id)  # a real player, off the list
     response = _submit(client, slot_id, entries)
     assert response.status_code == 201
     body = response.json()
     assert body["status"] == "flagged"
     assert body["result"]["ok"] is False
+
+
+def test_submit_with_an_unknown_player_is_422(
+    client: TestClient, db_session: Session
+) -> None:
+    team = _make_team(db_session)
+    assert team.id is not None
+    _seed_list(db_session, team.id)
+    slot_id = _open_slot(db_session, team.tournament_id)
+    _login_team(client, team)
+    entries = _valid_entries(client)
+    entries[1]["player_id"] = str(uuid.uuid4())  # not a real player
+    response = _submit(client, slot_id, entries)
+    assert response.status_code == 422
 
 
 def test_resubmit_supersedes_the_previous_version(
@@ -229,8 +248,10 @@ def test_submit_when_not_admitted_is_403(
     assert team.id is not None
     _seed_list(db_session, team.id)
     slot_id = _open_slot(db_session, team.tournament_id)
-    # An allowlist that admits some other team excludes ours.
-    db_session.add(SlotTeam(round_slot_id=slot_id, team_id=uuid.uuid4()))
+    other = _make_team(db_session, name="Team B")
+    assert other.id is not None
+    # An allowlist that admits another team excludes ours.
+    db_session.add(SlotTeam(round_slot_id=slot_id, team_id=other.id))
     db_session.commit()
     _login_team(client, team)
     response = _submit(client, slot_id, _valid_entries(client))
