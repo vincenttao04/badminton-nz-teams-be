@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.auth.hashing import hash_secret
-from app.models import Role, RoleAssignment, User
+from app.models import Association, Role, RoleAssignment, Team, User
 
 _OPENS_AT = datetime(2026, 6, 1, 9, 0, tzinfo=UTC)
 _CLOSES_AT = _OPENS_AT + timedelta(hours=2)
@@ -63,6 +63,22 @@ def _open_slot(
     assert response.status_code == 201, response.text
     slot: dict[str, object] = response.json()
     return slot
+
+
+def _create_team(db_session: Session, tournament_id: str, name: str) -> str:
+    association = Association(name=f"Assoc for {name}")
+    db_session.add(association)
+    db_session.commit()
+    assert association.id is not None
+    team = Team(
+        name=name,
+        association_id=association.id,
+        tournament_id=uuid.UUID(tournament_id),
+    )
+    db_session.add(team)
+    db_session.commit()
+    assert team.id is not None
+    return str(team.id)
 
 
 def test_open_requires_authentication(client: TestClient) -> None:
@@ -248,4 +264,123 @@ def test_patch_without_the_official_role_is_forbidden(
 def test_patch_a_missing_slot_is_404(client: TestClient, db_session: Session) -> None:
     _login_official(client, db_session)
     response = client.patch(f"/v1/slots/{uuid.uuid4()}", json={"status": "closed"})
+    assert response.status_code == 404
+
+
+def test_a_slot_admits_all_teams_by_default(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    slot = _open_slot(client, tournament_id)
+    response = client.get(f"/v1/slots/{slot['id']}/teams")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["admits_all"] is True
+    assert body["teams"] == []
+
+
+def test_open_a_slot_for_selected_teams(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    team_id = _create_team(db_session, tournament_id, "Northern")
+    slot = _open_slot(client, tournament_id, team_ids=[team_id])
+    response = client.get(f"/v1/slots/{slot['id']}/teams")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["admits_all"] is False
+    assert [team["id"] for team in body["teams"]] == [team_id]
+
+
+def test_open_rejects_a_team_from_another_tournament(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    other_tournament_id = _create_tournament(client)
+    other_team_id = _create_team(db_session, other_tournament_id, "Outsider")
+    response = client.post(
+        f"/v1/tournaments/{tournament_id}/slots",
+        json={"team_ids": [other_team_id]},
+    )
+    assert response.status_code == 422
+
+
+def test_open_rejects_an_unknown_team(client: TestClient, db_session: Session) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    response = client.post(
+        f"/v1/tournaments/{tournament_id}/slots",
+        json={"team_ids": [str(uuid.uuid4())]},
+    )
+    assert response.status_code == 422
+
+
+def test_set_the_admitted_teams_on_a_slot(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    team_id = _create_team(db_session, tournament_id, "Central")
+    slot = _open_slot(client, tournament_id)
+    response = client.patch(f"/v1/slots/{slot['id']}", json={"team_ids": [team_id]})
+    assert response.status_code == 200
+    teams = client.get(f"/v1/slots/{slot['id']}/teams").json()
+    assert teams["admits_all"] is False
+    assert [team["id"] for team in teams["teams"]] == [team_id]
+
+
+def test_clearing_the_teams_admits_all_again(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    team_id = _create_team(db_session, tournament_id, "Southern")
+    slot = _open_slot(client, tournament_id, team_ids=[team_id])
+    response = client.patch(f"/v1/slots/{slot['id']}", json={"team_ids": []})
+    assert response.status_code == 200
+    teams = client.get(f"/v1/slots/{slot['id']}/teams").json()
+    assert teams["admits_all"] is True
+    assert teams["teams"] == []
+
+
+def test_reopen_for_specific_teams_in_one_step(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    team_id = _create_team(db_session, tournament_id, "Eastern")
+    slot = _open_slot(client, tournament_id)
+    client.patch(f"/v1/slots/{slot['id']}", json={"status": "closed"})
+    response = client.patch(
+        f"/v1/slots/{slot['id']}",
+        json={"status": "open", "team_ids": [team_id]},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "open"
+    teams = client.get(f"/v1/slots/{slot['id']}/teams").json()
+    assert [team["id"] for team in teams["teams"]] == [team_id]
+
+
+def test_patch_rejects_a_team_from_another_tournament(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    tournament_id = _create_tournament(client)
+    other_tournament_id = _create_tournament(client)
+    other_team_id = _create_team(db_session, other_tournament_id, "Stranger")
+    slot = _open_slot(client, tournament_id)
+    response = client.patch(
+        f"/v1/slots/{slot['id']}", json={"team_ids": [other_team_id]}
+    )
+    assert response.status_code == 422
+
+
+def test_teams_on_a_missing_slot_is_404(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    response = client.get(f"/v1/slots/{uuid.uuid4()}/teams")
     assert response.status_code == 404
