@@ -27,10 +27,15 @@ class Tournament(Base, table=True):
             "min_female IS NULL OR max_female IS NULL OR min_female <= max_female",
             name="roster_min_female_not_above_max",
         ),
+        CheckConstraint(
+            "ends_at > starts_at",
+            name="tournament_ends_after_starts",
+        ),
     )
 
     name: str = Field(index=True)
     starts_at: datetime = Field(sa_type=DateTime(timezone=True))
+    ends_at: datetime = Field(sa_type=DateTime(timezone=True))
 
     # Tie format: matches contested per event in one tie, set per tournament.
     mens_singles_matches: int = Field(ge=0)
