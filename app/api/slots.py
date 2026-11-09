@@ -9,8 +9,10 @@ from app.models import Role
 from app.models.enums import RoundSlotStatus
 from app.services.slots import (
     RoundSlotNotFoundError,
+    RoundSlotTeamError,
     RoundSlotWindowError,
     get_slot,
+    list_admitted_teams,
     list_slots,
     open_slot,
     update_slot,
@@ -26,11 +28,13 @@ _require_session = Depends(get_current_session)
 class SlotOpen(BaseModel):
     opens_at: AwareDatetime | None = None
     closes_at: AwareDatetime | None = None
+    team_ids: list[uuid.UUID] | None = None
 
 
 class SlotUpdate(BaseModel):
     status: RoundSlotStatus | None = None
     closes_at: AwareDatetime | None = None
+    team_ids: list[uuid.UUID] | None = None
 
 
 class SlotResponse(BaseModel):
@@ -45,6 +49,20 @@ class SlotResponse(BaseModel):
     updated_at: datetime
 
 
+class SlotTeamMember(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+
+
+class SlotTeamsResponse(BaseModel):
+    # admits_all is true when no teams are listed: the slot admits every team
+    # in its tournament.
+    admits_all: bool
+    teams: list[SlotTeamMember]
+
+
 def _slot_not_found() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Round slot not found"
@@ -57,9 +75,9 @@ def _tournament_not_found() -> HTTPException:
     )
 
 
-def _window_error(exc: RoundSlotWindowError) -> HTTPException:
+def _unprocessable(detail: str) -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail
     )
 
 
@@ -81,9 +99,10 @@ def open_round_slot(
             tournament_id=tournament_id,
             opens_at=body.opens_at,
             closes_at=body.closes_at,
+            team_ids=body.team_ids,
         )
-    except RoundSlotWindowError as exc:
-        raise _window_error(exc) from exc
+    except (RoundSlotWindowError, RoundSlotTeamError) as exc:
+        raise _unprocessable(str(exc)) from exc
     return SlotResponse.model_validate(slot)
 
 
@@ -105,19 +124,34 @@ def read_round_slot(slot_id: uuid.UUID, db: DbSession) -> SlotResponse:
     return SlotResponse.model_validate(slot)
 
 
+@router.get("/slots/{slot_id}/teams", dependencies=[_require_session])
+def list_round_slot_teams(slot_id: uuid.UUID, db: DbSession) -> SlotTeamsResponse:
+    try:
+        teams = list_admitted_teams(db, slot_id)
+    except RoundSlotNotFoundError as exc:
+        raise _slot_not_found() from exc
+    return SlotTeamsResponse(
+        admits_all=not teams,
+        teams=[SlotTeamMember.model_validate(team) for team in teams],
+    )
+
+
 @router.patch("/slots/{slot_id}", dependencies=[_require_official])
 def update_round_slot(
     slot_id: uuid.UUID, body: SlotUpdate, db: DbSession
 ) -> SlotResponse:
-    if body.status is None and body.closes_at is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Provide a status change or a new cut-off.",
-        )
+    if body.status is None and body.closes_at is None and body.team_ids is None:
+        raise _unprocessable("Provide a status change, a new cut-off, or teams.")
     try:
-        slot = update_slot(db, slot_id, status=body.status, closes_at=body.closes_at)
+        slot = update_slot(
+            db,
+            slot_id,
+            status=body.status,
+            closes_at=body.closes_at,
+            team_ids=body.team_ids,
+        )
     except RoundSlotNotFoundError as exc:
         raise _slot_not_found() from exc
-    except RoundSlotWindowError as exc:
-        raise _window_error(exc) from exc
+    except (RoundSlotWindowError, RoundSlotTeamError) as exc:
+        raise _unprocessable(str(exc)) from exc
     return SlotResponse.model_validate(slot)
