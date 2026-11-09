@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -29,6 +29,7 @@ def _payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "name": "Nationals",
         "starts_at": datetime.now(UTC).isoformat(),
+        "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
         "mens_singles_matches": 1,
         "womens_singles_matches": 1,
         "mens_doubles_matches": 1,
@@ -138,3 +139,38 @@ def test_read_missing_tournament_is_404(
     _login_official(client, db_session)
     response = client.get(f"/v1/tournaments/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+def test_create_requires_an_end_date(client: TestClient, db_session: Session) -> None:
+    _login_official(client, db_session)
+    payload = _payload()
+    del payload["ends_at"]
+    response = client.post("/v1/tournaments", json=payload)
+    assert response.status_code == 422
+
+
+def test_create_rejects_an_end_before_the_start(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    starts = datetime.now(UTC)
+    ends = starts - timedelta(days=1)
+    response = client.post(
+        "/v1/tournaments",
+        json=_payload(starts_at=starts.isoformat(), ends_at=ends.isoformat()),
+    )
+    assert response.status_code == 422
+
+
+def test_patch_rejects_an_end_before_the_start(
+    client: TestClient, db_session: Session
+) -> None:
+    _login_official(client, db_session)
+    created = client.post("/v1/tournaments", json=_payload())
+    tournament_id = created.json()["id"]
+    starts = datetime.fromisoformat(created.json()["starts_at"])
+    response = client.patch(
+        f"/v1/tournaments/{tournament_id}",
+        json={"ends_at": (starts - timedelta(days=1)).isoformat()},
+    )
+    assert response.status_code == 422

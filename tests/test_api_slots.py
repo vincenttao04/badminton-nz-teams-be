@@ -45,6 +45,7 @@ def _create_tournament(client: TestClient) -> str:
         json={
             "name": "Nationals",
             "starts_at": _OPENS_AT.isoformat(),
+            "ends_at": _CLOSES_AT.isoformat(),
             "mens_singles_matches": 1,
             "womens_singles_matches": 1,
             "mens_doubles_matches": 1,
