@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import auth, teams, tournaments
+from app.api import auth, slots, teams, tournaments
 from app.db import get_engine
 
 
@@ -11,6 +11,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/v1")
     app.include_router(teams.router, prefix="/v1")
     app.include_router(tournaments.router, prefix="/v1")
+    app.include_router(slots.router, prefix="/v1")
 
     # Backend liveness check
     @app.get("/health")
