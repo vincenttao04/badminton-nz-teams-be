@@ -12,7 +12,7 @@ from app.models.lineups import LineupEntry, TieLineup
 from app.models.lists import ListEntry, RankedTeamList
 from app.models.organisation import Association, Team, Tournament
 from app.models.players import Player
-from app.models.slots import RoundSlot
+from app.models.slots import RoundSlot, SlotTeam
 
 __all__ = [
     "Association",
@@ -29,6 +29,7 @@ __all__ = [
     "RoleAssignment",
     "RoundSlot",
     "RoundSlotStatus",
+    "SlotTeam",
     "TieLineup",
     "Team",
     "Tournament",
