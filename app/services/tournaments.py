@@ -25,7 +25,8 @@ class TournamentConfigError(Exception):
         self.result = result
 
 
-def _tie_format_of(tournament: Tournament) -> TieFormat:
+def tie_format_of(tournament: Tournament) -> TieFormat:
+    """The tie format (matches per event) for a tournament."""
     return TieFormat(
         matches_per_event={
             Event.MENS_SINGLES: tournament.mens_singles_matches,
@@ -39,7 +40,7 @@ def _tie_format_of(tournament: Tournament) -> TieFormat:
 
 def _enforce_config(tournament: Tournament) -> None:
     result = validate_tournament_config(
-        _tie_format_of(tournament),
+        tie_format_of(tournament),
         min_male=tournament.min_male,
         max_male=tournament.max_male,
         min_female=tournament.min_female,
