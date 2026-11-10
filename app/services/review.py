@@ -19,6 +19,9 @@ from app.services.lineups import check_team_lineup
 from app.services.slots import list_admitted_teams
 from app.services.tournaments import get_tournament
 
+# Canonical event order (as a tie is laid out), not the stored string order.
+_EVENT_ORDER = {event: index for index, event in enumerate(Event)}
+
 
 class LineupNotFoundError(Exception):
     """Raised when no tie lineup exists for the given id."""
@@ -85,12 +88,10 @@ def _effective_teams(db: Session, slot: RoundSlot) -> list[Team]:
 
 def _entries(db: Session, lineup: TieLineup) -> list[LineupEntry]:
     assert lineup.id is not None
-    statement = (
-        select(LineupEntry)
-        .where(LineupEntry.tie_lineup_id == lineup.id)
-        .order_by(col(LineupEntry.event), col(LineupEntry.position))
-    )
-    return list(db.exec(statement).all())
+    rows = db.exec(
+        select(LineupEntry).where(LineupEntry.tie_lineup_id == lineup.id)
+    ).all()
+    return sorted(rows, key=lambda entry: (_EVENT_ORDER[entry.event], entry.position))
 
 
 def _recheck(db: Session, team: Team, entries: list[LineupEntry]) -> ValidationResult:
