@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict
 from app.api.deps import DbSession, get_current_session, require_roles
 from app.models import Role
 from app.models.enums import RoundSlotStatus
+from app.services.review import finalize_closed_slot
 from app.services.slots import (
     RoundSlotNotFoundError,
     RoundSlotTeamError,
@@ -154,4 +155,6 @@ def update_round_slot(
         raise _slot_not_found() from exc
     except (RoundSlotWindowError, RoundSlotTeamError) as exc:
         raise _unprocessable(str(exc)) from exc
+    if body.status is RoundSlotStatus.CLOSED:
+        finalize_closed_slot(db, slot)
     return SlotResponse.model_validate(slot)
